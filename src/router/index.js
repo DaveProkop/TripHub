@@ -61,6 +61,11 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/users',
+    component: () => import('@/pages/UsersPage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/',
     redirect: '/map'
   },
