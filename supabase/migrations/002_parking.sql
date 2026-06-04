@@ -1,0 +1,4 @@
+ALTER TABLE public.trips
+  ADD COLUMN IF NOT EXISTS parking_lat DECIMAL(10,8),
+  ADD COLUMN IF NOT EXISTS parking_lng DECIMAL(11,8),
+  ADD COLUMN IF NOT EXISTS parking_description TEXT DEFAULT '';
