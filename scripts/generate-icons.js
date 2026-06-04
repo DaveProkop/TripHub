@@ -21,6 +21,28 @@ function chunk(type, data) {
   return Buffer.concat([len, t, data, crcBuf])
 }
 
+function inRect(x, y, rx, ry, rw, rh) {
+  return x >= rx && x < rx + rw && y >= ry && y < ry + rh
+}
+
+function inRoundedRect(x, y, rx, ry, rw, rh, r) {
+  if (x < rx || x >= rx + rw || y < ry || y >= ry + rh) return false
+  const corners = [
+    [rx + r, ry + r], [rx + rw - r, ry + r],
+    [rx + r, ry + rh - r], [rx + rw - r, ry + rh - r]
+  ]
+  const inCornerZone =
+    (x < rx + r || x >= rx + rw - r) &&
+    (y < ry + r || y >= ry + rh - r)
+  if (!inCornerZone) return true
+  for (const [cx, cy] of corners) {
+    if ((x < rx + r) === (cx === rx + r) && (y < ry + r) === (cy === ry + r)) {
+      return Math.hypot(x - cx, y - cy) <= r
+    }
+  }
+  return false
+}
+
 function createPNG(size) {
   const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
 
@@ -28,64 +50,71 @@ function createPNG(size) {
   ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4)
   ihdr[8] = 8; ihdr[9] = 2 // 8-bit RGB
 
-  // Draw: indigo background + white rounded square + simple map pin icon
-  const rows = []
-  const cx = size / 2, cy = size / 2
-  const radius = size * 0.38
-  const pinR = size * 0.22
-  const pinTailLen = size * 0.18
+  // Layout constants (all relative to size)
+  const bgR = Math.round(size * 0.14)  // background rounded corner radius
 
+  // Card inset (white rounded rect)
+  const pad = Math.round(size * 0.12)
+  const cardR = Math.round(size * 0.1)
+
+  // Letter dimensions
+  const letterH = Math.round(size * 0.50)   // total letter height
+  const stroke = Math.round(size * 0.095)   // stroke width
+  const letterY = Math.round((size - letterH) / 2)
+
+  // T: occupies left half of card
+  const tWidth = Math.round(size * 0.28)
+  const tX = Math.round(size * 0.155)
+  // T top bar
+  const tBarY = letterY
+  const tBarH = stroke
+  // T stem
+  const tStemX = tX + Math.round((tWidth - stroke) / 2)
+  const tStemY = tBarY + tBarH
+  const tStemH = letterH - tBarH
+
+  // H: occupies right half of card
+  const hWidth = Math.round(size * 0.30)
+  const hX = Math.round(size * 0.515)
+  // H left vertical
+  const hLeftX = hX
+  // H right vertical
+  const hRightX = hX + hWidth - stroke
+  // H crossbar
+  const crossH = stroke
+  const crossY = letterY + Math.round((letterH - crossH) / 2)
+
+  const rows = []
   for (let y = 0; y < size; y++) {
     const row = Buffer.alloc(1 + size * 3)
-    row[0] = 0 // filter None
+    row[0] = 0
     for (let x = 0; x < size; x++) {
-      const dx = x - cx, dy = y - cy
-      const dist = Math.sqrt(dx * dx + dy * dy)
+      // Background gradient: deep indigo to violet
+      const t = (x + y) / (size * 2)
+      const r1 = 0x4f, g1 = 0x46, b1 = 0xe5  // indigo-600
+      const r2 = 0x7c, g2 = 0x3a, b2 = 0xed  // violet-600
+      let r = Math.round(r1 + (r2 - r1) * t)
+      let g = Math.round(g1 + (g2 - g1) * t)
+      let b = Math.round(b1 + (b2 - b1) * t)
 
-      // Background: indigo #6366f1
-      let r = 0x63, g = 0x66, b = 0xf1
+      // White card
+      const inCard = inRoundedRect(x, y, pad, pad, size - pad * 2, size - pad * 2, cardR)
+      if (inCard) { r = 255; g = 255; b = 255 }
 
-      // White rounded square inset
-      const pad = size * 0.15
-      const corner = size * 0.1
-      const inX = x - pad, inY = y - pad
-      const inW = size - pad * 2, inH = size - pad * 2
+      // Letter T
+      const inT =
+        inRect(x, y, tX, tBarY, tWidth, tBarH) ||                 // top bar
+        inRect(x, y, tStemX, tStemY, stroke, tStemH)              // stem
 
-      const inRoundedSquare =
-        inX >= corner && inX <= inW - corner && inY >= 0 && inY <= inH ||
-        inX >= 0 && inX <= inW && inY >= corner && inY <= inH - corner ||
-        Math.sqrt(Math.pow(inX - corner, 2) + Math.pow(inY - corner, 2)) <= corner ||
-        Math.sqrt(Math.pow(inX - (inW - corner), 2) + Math.pow(inY - corner, 2)) <= corner ||
-        Math.sqrt(Math.pow(inX - corner, 2) + Math.pow(inY - (inH - corner), 2)) <= corner ||
-        Math.sqrt(Math.pow(inX - (inW - corner), 2) + Math.pow(inY - (inH - corner), 2)) <= corner
+      // Letter H
+      const inH =
+        inRect(x, y, hLeftX, letterY, stroke, letterH) ||         // left leg
+        inRect(x, y, hRightX, letterY, stroke, letterH) ||        // right leg
+        inRect(x, y, hLeftX, crossY, hWidth, crossH)              // crossbar
 
-      if (inRoundedSquare) {
-        r = 255; g = 255; b = 255
-      }
-
-      // Indigo map pin (circle + tail)
-      const pinCY = cy - pinTailLen * 0.3
-      const dPinX = x - cx, dPinY = y - pinCY
-      const pinDist = Math.sqrt(dPinX * dPinX + dPinY * dPinY)
-
-      if (inRoundedSquare) {
-        // Pin head (circle)
-        if (pinDist <= pinR) {
-          r = 0x63; g = 0x66; b = 0xf1
-        }
-        // Pin tail (triangle below circle)
-        const tailBottom = pinCY + pinR + pinTailLen
-        if (y > pinCY + pinR * 0.7 && y <= tailBottom) {
-          const progress = (y - (pinCY + pinR * 0.7)) / (tailBottom - (pinCY + pinR * 0.7))
-          const halfWidth = pinR * 0.7 * (1 - progress)
-          if (Math.abs(x - cx) <= halfWidth) {
-            r = 0x63; g = 0x66; b = 0xf1
-          }
-        }
-        // White dot in pin
-        if (pinDist <= pinR * 0.38) {
-          r = 255; g = 255; b = 255
-        }
+      if (inCard && (inT || inH)) {
+        // Indigo-600 letters
+        r = 0x4f; g = 0x46; b = 0xe5
       }
 
       const off = 1 + x * 3
