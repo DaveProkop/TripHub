@@ -1,17 +1,11 @@
-import { useRegisterSW } from 'virtual:pwa-register/vue'
+import { inject } from 'vue'
 
 export function useUpdateNotification() {
-  const { needRefresh, updateServiceWorker } = useRegisterSW({
-    onRegistered(r) {
-      console.log('SW registered:', r)
-    },
-    onRegisterError(error) {
-      console.error('SW registration error:', error)
-    }
-  })
+  const needRefresh = inject('sw-need-refresh')
+  const updateServiceWorker = inject('sw-update')
 
   async function update() {
-    await updateServiceWorker(true)
+    await updateServiceWorker?.(true)
   }
 
   return { needRefresh, update }

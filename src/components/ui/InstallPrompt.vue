@@ -5,16 +5,20 @@ const installPromptEvent = ref(null)
 const showPrompt = ref(false)
 const DISMISSED_KEY = 'pwa-install-dismissed'
 
-function handleBeforeInstallPrompt(e) {
-  e.preventDefault()
+function activate(e) {
   if (localStorage.getItem(DISMISSED_KEY)) return
   installPromptEvent.value = e
   showPrompt.value = true
 }
 
+function handlePwaInstallAvailable() {
+  activate(window.__pwaInstallEvent)
+}
+
 function handleAppInstalled() {
   showPrompt.value = false
   installPromptEvent.value = null
+  localStorage.setItem(DISMISSED_KEY, '1')
 }
 
 async function install() {
@@ -34,12 +38,16 @@ function dismiss() {
 }
 
 onMounted(() => {
-  window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  // Event may have fired before this component mounted — check global capture
+  if (window.__pwaInstallEvent) {
+    activate(window.__pwaInstallEvent)
+  }
+  window.addEventListener('pwa-install-available', handlePwaInstallAvailable)
   window.addEventListener('appinstalled', handleAppInstalled)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  window.removeEventListener('pwa-install-available', handlePwaInstallAvailable)
   window.removeEventListener('appinstalled', handleAppInstalled)
 })
 </script>
