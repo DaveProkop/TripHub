@@ -1,7 +1,31 @@
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 
 const themeStore = useThemeStore()
+
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+const canInstall = ref(!!window.__pwaInstallEvent)
+
+function handleInstallAvailable() {
+  canInstall.value = true
+}
+
+onMounted(() => {
+  window.addEventListener('pwa-install-available', handleInstallAvailable)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('pwa-install-available', handleInstallAvailable)
+})
+
+async function triggerInstall() {
+  if (!window.__pwaInstallEvent) return
+  window.__pwaInstallEvent.prompt()
+  await window.__pwaInstallEvent.userChoice
+  window.__pwaInstallEvent = null
+  canInstall.value = false
+}
 </script>
 
 <template>
@@ -39,6 +63,23 @@ const themeStore = useThemeStore()
         <!-- Auth card -->
         <div class="card shadow-soft">
           <router-view />
+        </div>
+
+        <!-- Install hint -->
+        <div v-if="!isStandalone" class="mt-6 text-center">
+          <button
+            v-if="canInstall"
+            @click="triggerInstall"
+            class="inline-flex items-center gap-1.5 text-sm text-primary-500 dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Přidat TripHub na plochu
+          </button>
+          <p v-else class="text-xs text-gray-400 dark:text-gray-500">
+            Přidej na plochu přes menu prohlížeče → Přidat na plochu
+          </p>
         </div>
       </div>
     </div>
