@@ -2,6 +2,7 @@
 import { useThemeStore } from '@/stores/theme'
 import { useToastStore } from '@/stores/toast'
 import UpdateNotification from '@/components/ui/UpdateNotification.vue'
+import InstallPrompt from '@/components/ui/InstallPrompt.vue'
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
 
@@ -113,6 +114,9 @@ const toastTypeClasses = computed(() => ({
         </router-link>
       </div>
     </nav>
+
+    <!-- Install prompt -->
+    <InstallPrompt />
 
     <!-- Update notification -->
     <UpdateNotification />
