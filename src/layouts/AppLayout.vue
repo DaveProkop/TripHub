@@ -32,7 +32,7 @@ const toastTypeClasses = computed(() => ({
 </script>
 
 <template>
-  <div class="flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+  <div class="fixed inset-0 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
     <!-- Header -->
     <header class="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm z-10">
       <div class="flex items-center justify-between px-4 h-14">
