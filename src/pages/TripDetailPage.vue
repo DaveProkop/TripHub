@@ -83,9 +83,9 @@ async function handleFormSubmit({ tripData, tagIds }) {
   formLoading.value = true
   try {
     if (props.mode === 'new') {
-      const newTrip = await tripsStore.createTrip(tripData, tagIds)
+      await tripsStore.createTrip(tripData, tagIds)
       toastStore.success('Výlet byl přidán')
-      router.push(`/trips/${newTrip.id}`)
+      router.push('/trips')
     } else if (props.mode === 'edit') {
       await tripsStore.updateTrip(props.id, tripData, tagIds)
       toastStore.success('Výlet byl upraven')

@@ -37,8 +37,9 @@ function getTextColor(hex) {
   <span
     class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200"
     :class="{
-      'cursor-pointer hover:opacity-80': clickable,
-      'ring-2 ring-offset-1 ring-white dark:ring-gray-800': selected && clickable
+      'cursor-pointer': clickable,
+      'opacity-40 hover:opacity-70': clickable && !selected,
+      'ring-2 ring-offset-1 ring-gray-600 dark:ring-gray-300': clickable && selected
     }"
     :style="{
       backgroundColor: color,
