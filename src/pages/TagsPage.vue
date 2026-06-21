@@ -79,7 +79,7 @@ function getTextColor(hex) {
 </script>
 
 <template>
-  <div class="p-4">
+  <div class="p-4 max-w-2xl mx-auto">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -95,7 +95,7 @@ function getTextColor(hex) {
     </div>
 
     <!-- Loading -->
-    <div v-if="tagsStore.loading" class="grid grid-cols-2 gap-3">
+    <div v-if="tagsStore.loading" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
       <div v-for="i in 4" :key="i" class="h-24 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
     </div>
 
@@ -112,7 +112,7 @@ function getTextColor(hex) {
     </div>
 
     <!-- Tag grid -->
-    <div v-else class="grid grid-cols-2 gap-3 pb-8">
+    <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-8">
       <div
         v-for="tag in tagsStore.tags"
         :key="tag.id"
