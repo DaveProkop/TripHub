@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useTagsStore } from '@/stores/tags'
+import { usePhotoUpload } from '@/composables/usePhotoUpload'
 import AppInput from '@/components/ui/AppInput.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
@@ -14,6 +15,7 @@ const props = defineProps({
 
 const emit = defineEmits(['submit', 'cancel'])
 const tagsStore = useTagsStore()
+const { uploadFile, uploadFromUrl } = usePhotoUpload()
 
 const name = ref('')
 const description = ref('')
@@ -22,7 +24,9 @@ const lng = ref(null)
 const parkingLat = ref(null)
 const parkingLng = ref(null)
 const parkingDescription = ref('')
-const photos = ref([''])
+// Each photo: { id, url: string|null, previewUrl: string|null, uploading: bool, error: string|null }
+const photos = ref([])
+const photoUrlInput = ref('')
 const selectedTagIds = ref([])
 const errors = ref({})
 
@@ -113,7 +117,9 @@ onMounted(async () => {
     parkingLat.value = props.initialData.parking_lat || null
     parkingLng.value = props.initialData.parking_lng || null
     parkingDescription.value = props.initialData.parking_description || ''
-    photos.value = props.initialData.photos?.length > 0 ? [...props.initialData.photos] : ['']
+    photos.value = (props.initialData.photos ?? []).map(url => ({
+      id: crypto.randomUUID(), url, previewUrl: url, uploading: false, error: null
+    }))
     selectedTagIds.value = props.initialData.tags?.map(t => t.id) || []
   }
 })
@@ -124,15 +130,58 @@ function toggleTag(tagId) {
   else selectedTagIds.value.splice(idx, 1)
 }
 
-function addPhoto() { photos.value.push('') }
 function removePhoto(i) {
   photos.value.splice(i, 1)
-  if (photos.value.length === 0) photos.value.push('')
+}
+
+async function handleFileSelect(event) {
+  const files = Array.from(event.target.files || [])
+  const remaining = 6 - photos.value.length
+  event.target.value = ''
+  if (!remaining) return
+
+  for (const file of files.slice(0, remaining)) {
+    const idx = photos.value.length
+    photos.value.push({
+      id: crypto.randomUUID(), url: null,
+      previewUrl: URL.createObjectURL(file),
+      uploading: true, error: null
+    })
+    const photo = photos.value[idx]
+    try {
+      photo.url = await uploadFile(file)
+    } catch (e) {
+      photo.error = 'Nahrávání selhalo'
+    } finally {
+      photo.uploading = false
+    }
+  }
+}
+
+async function handleUrlAdd() {
+  const url = photoUrlInput.value.trim()
+  if (!url || photos.value.length >= 6) return
+  photoUrlInput.value = ''
+
+  const idx = photos.value.length
+  photos.value.push({
+    id: crypto.randomUUID(), url: null,
+    previewUrl: url, uploading: true, error: null
+  })
+  const photo = photos.value[idx]
+  try {
+    photo.url = await uploadFromUrl(url)
+    photo.previewUrl = photo.url
+  } catch (e) {
+    photo.error = e.message
+  } finally {
+    photo.uploading = false
+  }
 }
 
 function handleSubmit() {
   if (!validate()) return
-  const cleanPhotos = photos.value.filter(p => p.trim() !== '')
+  const cleanPhotos = photos.value.filter(p => p.url && !p.uploading && !p.error).map(p => p.url)
   emit('submit', {
     tripData: {
       name: name.value.trim(),
@@ -309,29 +358,62 @@ const mapTrips = computed(() => lat.value && lng.value ? [{ lat: lat.value, lng:
 
     <!-- Fotky -->
     <div>
-      <p class="label mb-2">Fotografie (URL)</p>
-      <div class="space-y-2">
-        <div v-for="(photo, index) in photos" :key="index" class="flex gap-2">
-          <input
-            v-model="photos[index]"
-            type="url"
-            :placeholder="`https://example.com/foto-${index + 1}.jpg`"
-            class="input-base flex-1"
-          />
-          <button type="button" @click="removePhoto(index)"
-            class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      <div class="flex items-center justify-between mb-2">
+        <p class="label">Fotografie <span class="text-gray-400 text-xs font-normal">(max 6)</span></p>
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ photos.length }}/6</span>
+      </div>
+
+      <!-- Photo grid -->
+      <div class="grid grid-cols-3 gap-2 mb-3">
+        <div v-for="(photo, i) in photos" :key="photo.id"
+          class="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <img v-if="photo.previewUrl" :src="photo.previewUrl" class="w-full h-full object-cover"
+            @error="photo.previewUrl = null" />
+          <div v-if="photo.uploading" class="absolute inset-0 flex items-center justify-center bg-black/40">
+            <div class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <div v-else-if="photo.error" class="absolute inset-0 flex flex-col items-center justify-center bg-red-500/90 p-2">
+            <svg class="w-5 h-5 text-white mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-white text-xs text-center leading-tight">{{ photo.error }}</p>
+          </div>
+          <button v-if="!photo.uploading" type="button" @click="removePhoto(i)"
+            class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
         </div>
+
+        <!-- Add slot -->
+        <label v-if="photos.length < 6"
+          class="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+          <input type="file" accept="image/*" multiple class="hidden" @change="handleFileSelect" />
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span class="text-xs text-gray-400 mt-1">Přidat foto</span>
+        </label>
       </div>
-      <button type="button" @click="addPhoto" class="mt-2 flex items-center gap-2 text-sm text-primary-500 hover:text-primary-600 font-medium">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Přidat foto
-      </button>
+
+      <!-- URL input -->
+      <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Nebo přidat z URL</p>
+        <div class="flex gap-2">
+          <input v-model="photoUrlInput" type="url" placeholder="https://example.com/foto.jpg"
+            class="input-base flex-1 text-sm" :disabled="photos.length >= 6"
+            @keydown.enter.prevent="handleUrlAdd" />
+          <button type="button" @click="handleUrlAdd"
+            :disabled="!photoUrlInput.trim() || photos.length >= 6"
+            class="btn-primary text-sm px-3 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
+            Stáhnout
+          </button>
+        </div>
+        <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+          Fotka se stáhne, zmenší a uloží k výletu. Pokud URL blokuje stahování, použijte přímý upload.
+        </p>
+      </div>
     </div>
 
     <!-- Actions -->

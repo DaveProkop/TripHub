@@ -5,6 +5,7 @@ import { useTripsStore } from '@/stores/trips'
 import { useToastStore } from '@/stores/toast'
 import { useAuthStore } from '@/stores/auth'
 import TripForm from '@/components/trips/TripForm.vue'
+import TripVisits from '@/components/trips/TripVisits.vue'
 import AppBadge from '@/components/ui/AppBadge.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -234,6 +235,9 @@ async function confirmDelete() {
           :parking-description="trip.parking_description || ''"
         />
       </div>
+
+      <!-- Byl jsem tam -->
+      <TripVisits :trip-id="trip.id" />
 
       <!-- Metadata -->
       <div class="card shadow-soft">
