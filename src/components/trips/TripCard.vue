@@ -41,32 +41,34 @@ defineEmits(['edit', 'delete'])
       </div>
     </div>
 
-    <!-- Photo thumbnail -->
-    <router-link v-if="trip.photos && trip.photos.length > 0" :to="`/trips/${trip.id}`"
-      class="block mb-2 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 h-28 relative">
-      <img
-        :src="trip.photos[0]"
-        :alt="trip.name"
-        class="w-full h-full object-contain"
-        @error="$event.target.closest('a').remove()"
-      />
-      <span v-if="trip.photos.length > 1"
-        class="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded-md">
-        {{ trip.photos.length }} ×
-      </span>
-    </router-link>
-
-    <!-- Description + GPS -->
+    <!-- Photo + description (float layout) -->
     <router-link :to="`/trips/${trip.id}`" class="block">
-      <p v-if="trip.description" class="text-gray-500 dark:text-gray-400 text-sm line-clamp-2">
+      <!-- Image floated left -->
+      <div v-if="trip.photos && trip.photos.length > 0"
+        class="float-left mr-3 mb-1 w-24 h-20 rounded-xl overflow-hidden relative flex-shrink-0">
+        <img
+          :src="trip.photos[0]"
+          :alt="trip.name"
+          class="w-full h-full object-contain"
+          @error="$event.target.closest('div').remove()"
+        />
+        <span v-if="trip.photos.length > 1"
+          class="absolute bottom-0.5 right-0.5 bg-black/50 text-white text-xs px-1 py-0.5 rounded leading-none">
+          {{ trip.photos.length }}×
+        </span>
+      </div>
+
+      <!-- Text wraps around image -->
+      <p v-if="trip.description" class="text-gray-500 dark:text-gray-400 text-sm line-clamp-3">
         {{ trip.description }}
       </p>
-      <div v-if="trip.lat && trip.lng" class="flex items-center gap-1 mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+      <div v-if="trip.lat && trip.lng" class="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
         </svg>
         <span>{{ Number(trip.lat).toFixed(4) }}, {{ Number(trip.lng).toFixed(4) }}</span>
       </div>
+      <div class="clear-both"></div>
     </router-link>
 
     <!-- Tags -->
