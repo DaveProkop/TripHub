@@ -177,80 +177,27 @@ async function confirmDelete() {
 
     <!-- VIEW MODE -->
     <div v-else-if="mode === 'view' && trip" class="space-y-4 pb-8">
-      <!-- Photo gallery -->
-      <div v-if="trip.photos && trip.photos.length > 0">
-        <div class="grid gap-2" :class="trip.photos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'">
+      <!-- Main info card -->
+      <div class="card shadow-soft">
+        <!-- Title -->
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">{{ trip.name }}</h2>
+
+        <!-- Photo thumbnails -->
+        <div v-if="trip.photos && trip.photos.length > 0" class="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-1 px-1">
           <div
             v-for="(photo, index) in trip.photos"
             :key="index"
-            class="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer"
-            :class="trip.photos.length === 1 ? 'h-56' : 'h-36'"
+            class="flex-shrink-0 w-24 h-20 rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
             @click="lightboxIndex = index"
           >
             <img
               :src="photo"
               :alt="`Fotka ${index + 1}`"
-              class="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
-              @error="$event.target.parentElement.classList.add('hidden')"
+              class="w-full h-full object-contain"
+              @error="$event.target.parentElement.remove()"
             />
-            <!-- Photo count badge on last visible cell -->
-            <div v-if="index === 1 && trip.photos.length > 2"
-              class="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <span class="text-white font-semibold text-lg">+{{ trip.photos.length - 2 }}</span>
-            </div>
           </div>
         </div>
-      </div>
-
-      <!-- Lightbox -->
-      <Teleport to="body">
-        <div v-if="lightboxIndex !== null"
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black/95"
-          @click.self="lightboxIndex = null">
-
-          <!-- Close -->
-          <button @click="lightboxIndex = null"
-            class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors z-10">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-
-          <!-- Counter -->
-          <div v-if="trip.photos.length > 1"
-            class="absolute top-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
-            {{ lightboxIndex + 1 }} / {{ trip.photos.length }}
-          </div>
-
-          <!-- Image -->
-          <img
-            :src="trip.photos[lightboxIndex]"
-            :key="lightboxIndex"
-            class="max-w-full max-h-full object-contain select-none"
-            style="padding: 3.5rem 3rem 2rem"
-          />
-
-          <!-- Prev -->
-          <button v-if="lightboxIndex > 0" @click="lightboxIndex--"
-            class="absolute left-2 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition-colors">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-          </button>
-
-          <!-- Next -->
-          <button v-if="lightboxIndex < trip.photos.length - 1" @click="lightboxIndex++"
-            class="absolute right-2 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition-colors">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-          </button>
-        </div>
-      </Teleport>
-
-      <!-- Main info card -->
-      <div class="card shadow-soft">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ trip.name }}</h2>
 
         <!-- Tags -->
         <div v-if="trip.tags && trip.tags.length > 0" class="flex flex-wrap gap-1.5 mb-3">
@@ -270,6 +217,47 @@ async function confirmDelete() {
         />
         <p v-else class="text-gray-400 dark:text-gray-500 italic text-sm">Bez popisu</p>
       </div>
+
+      <!-- Lightbox -->
+      <Teleport to="body">
+        <div v-if="lightboxIndex !== null"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/95"
+          @click.self="lightboxIndex = null">
+
+          <button @click="lightboxIndex = null"
+            class="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors z-10">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+
+          <div v-if="trip.photos.length > 1"
+            class="absolute top-4 left-1/2 -translate-x-1/2 text-white/70 text-sm select-none">
+            {{ lightboxIndex + 1 }} / {{ trip.photos.length }}
+          </div>
+
+          <img
+            :src="trip.photos[lightboxIndex]"
+            :key="lightboxIndex"
+            class="max-w-full max-h-full object-contain select-none"
+            style="padding: 3.5rem 3rem 2rem"
+          />
+
+          <button v-if="lightboxIndex > 0" @click="lightboxIndex--"
+            class="absolute left-2 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition-colors">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+
+          <button v-if="lightboxIndex < trip.photos.length - 1" @click="lightboxIndex++"
+            class="absolute right-2 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition-colors">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </Teleport>
 
       <!-- Location card -->
       <div class="card shadow-soft">
