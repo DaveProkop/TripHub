@@ -15,7 +15,7 @@ defineEmits(['edit', 'delete'])
   <div class="card hover:shadow-soft transition-shadow duration-200 cursor-pointer">
     <!-- Photos preview -->
     <div v-if="trip.photos && trip.photos.length > 0"
-      class="mb-3 -mx-4 -mt-4 rounded-t-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 aspect-[4/3] flex items-center justify-center">
+      class="mb-3 -mx-4 -mt-4 rounded-t-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 h-28 flex items-center justify-center">
       <img
         :src="trip.photos[0]"
         :alt="trip.name"
