@@ -172,8 +172,9 @@ async function handleUrlAdd() {
   try {
     photo.url = await uploadFromUrl(url)
     photo.previewUrl = photo.url
-  } catch (e) {
-    photo.error = e.message
+  } catch {
+    // CORS or compression failed — store the URL directly as an external reference
+    photo.url = url
   } finally {
     photo.uploading = false
   }
@@ -407,11 +408,11 @@ const mapTrips = computed(() => lat.value && lng.value ? [{ lat: lat.value, lng:
           <button type="button" @click="handleUrlAdd"
             :disabled="!photoUrlInput.trim() || photos.length >= 6"
             class="btn-primary text-sm px-3 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
-            Stáhnout
+            Přidat
           </button>
         </div>
         <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-          Fotka se stáhne, zmenší a uloží k výletu. Pokud URL blokuje stahování, použijte přímý upload.
+          Pokud to server povolí, fotka se stáhne a zmenší. Jinak se uloží odkaz.
         </p>
       </div>
     </div>
