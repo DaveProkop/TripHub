@@ -19,25 +19,25 @@ function renderMarkdown(text) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-  // Bold and italic
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
-  // Process lines
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
   const lines = html.split('\n')
   const result = []
   let inList = false
   for (const line of lines) {
-    if (line.match(/^[-*] /)) {
+    const headingMatch = line.match(/^(#{1,3}) (.+)/)
+    if (headingMatch) {
+      if (inList) { result.push('</ul>'); inList = false }
+      const tag = headingMatch[1].length === 1 ? 'h2' : headingMatch[1].length === 2 ? 'h2' : 'h3'
+      result.push(`<${tag}>${headingMatch[2]}</${tag}>`)
+    } else if (line.match(/^[-*] /)) {
       if (!inList) { result.push('<ul>'); inList = true }
       result.push(`<li>${line.slice(2)}</li>`)
     } else {
       if (inList) { result.push('</ul>'); inList = false }
-      if (line.trim() === '') {
-        result.push('<br>')
-      } else {
-        result.push(`<p>${line}</p>`)
-      }
+      result.push(line.trim() === '' ? '<br>' : `<p>${line}</p>`)
     }
   }
   if (inList) result.push('</ul>')
@@ -70,13 +70,45 @@ function insertBullet() {
   const val = props.modelValue
   const lineStart = val.lastIndexOf('\n', pos - 1) + 1
   const lineContent = val.slice(lineStart, pos)
-  // If already a list item, don't double-add
   if (lineContent.startsWith('- ')) return
   const newText = val.slice(0, lineStart) + '- ' + val.slice(lineStart)
   emit('update:modelValue', newText)
   nextTick(() => {
     el.focus()
     el.setSelectionRange(pos + 2, pos + 2)
+  })
+}
+
+function insertHeading() {
+  const el = textarea.value
+  if (!el) return
+  const pos = el.selectionStart
+  const val = props.modelValue
+  const lineStart = val.lastIndexOf('\n', pos - 1) + 1
+  const lineContent = val.slice(lineStart)
+  if (lineContent.startsWith('## ')) return
+  const newText = val.slice(0, lineStart) + '## ' + val.slice(lineStart)
+  emit('update:modelValue', newText)
+  nextTick(() => {
+    el.focus()
+    el.setSelectionRange(pos + 3, pos + 3)
+  })
+}
+
+function insertLink() {
+  const el = textarea.value
+  if (!el) return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const val = props.modelValue
+  const selected = val.slice(start, end)
+  const linkText = selected || 'text'
+  const newText = val.slice(0, start) + `[${linkText}](url)` + val.slice(end)
+  emit('update:modelValue', newText)
+  nextTick(() => {
+    el.focus()
+    const urlStart = start + linkText.length + 3
+    el.setSelectionRange(urlStart, urlStart + 3)
   })
 }
 </script>
@@ -121,6 +153,19 @@ function insertBullet() {
         class="px-2.5 py-1 rounded text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         title="Odrážka"
       >≡</button>
+      <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5 self-center"></div>
+      <button
+        type="button"
+        @click="insertHeading()"
+        class="px-2.5 py-1 rounded text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        title="Nadpis (##)"
+      >H</button>
+      <button
+        type="button"
+        @click="insertLink()"
+        class="px-2.5 py-1 rounded text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        title="Odkaz [text](url)"
+      >🔗</button>
       <div class="flex-1"></div>
       <span class="text-xs text-gray-400 dark:text-gray-500 self-center pr-1">Markdown</span>
     </div>
@@ -151,4 +196,8 @@ function insertBullet() {
 .markdown-preview :deep(em) { font-style: italic; }
 .markdown-preview :deep(ul) { list-style: disc; padding-left: 1.25rem; margin: 0.5rem 0; }
 .markdown-preview :deep(li) { margin-bottom: 0.25rem; }
+.markdown-preview :deep(h2) { font-size: 1rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
+.markdown-preview :deep(h3) { font-size: 0.9rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+.markdown-preview :deep(a) { color: #6366f1; text-decoration: underline; }
+.markdown-preview :deep(a:hover) { color: #4f46e5; }
 </style>

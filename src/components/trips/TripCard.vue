@@ -9,6 +9,17 @@ defineProps({
 })
 
 defineEmits(['edit', 'delete'])
+
+function stripMarkdown(text) {
+  if (!text) return ''
+  return text
+    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*([^*\n]+?)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[-*]\s/gm, '')
+}
 </script>
 
 <template>
@@ -60,7 +71,7 @@ defineEmits(['edit', 'delete'])
 
       <!-- Text wraps around image -->
       <p v-if="trip.description" class="text-gray-500 dark:text-gray-400 text-sm line-clamp-3">
-        {{ trip.description }}
+        {{ stripMarkdown(trip.description) }}
       </p>
       <div v-if="trip.lat && trip.lng" class="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

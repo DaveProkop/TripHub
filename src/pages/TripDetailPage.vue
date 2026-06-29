@@ -18,11 +18,17 @@ function renderMarkdown(text) {
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
   const lines = html.split('\n')
   const result = []
   let inList = false
   for (const line of lines) {
-    if (line.match(/^[-*] /)) {
+    const headingMatch = line.match(/^(#{1,3}) (.+)/)
+    if (headingMatch) {
+      if (inList) { result.push('</ul>'); inList = false }
+      const tag = headingMatch[1].length <= 2 ? 'h2' : 'h3'
+      result.push(`<${tag}>${headingMatch[2]}</${tag}>`)
+    } else if (line.match(/^[-*] /)) {
       if (!inList) { result.push('<ul>'); inList = true }
       result.push(`<li>${line.slice(2)}</li>`)
     } else {
@@ -331,4 +337,8 @@ async function confirmDelete() {
 .markdown-body :deep(ul) { list-style: disc; padding-left: 1.25rem; margin: 0.5rem 0; }
 .markdown-body :deep(li) { margin-bottom: 0.25rem; }
 .markdown-body :deep(br) { display: block; content: ''; margin-top: 0.5rem; }
+.markdown-body :deep(h2) { font-size: 1.1rem; font-weight: 700; color: var(--tw-prose-headings, inherit); margin: 1rem 0 0.4rem; }
+.markdown-body :deep(h3) { font-size: 1rem; font-weight: 600; margin: 0.75rem 0 0.3rem; }
+.markdown-body :deep(a) { color: #6366f1; text-decoration: underline; }
+.markdown-body :deep(a:hover) { color: #4f46e5; }
 </style>
