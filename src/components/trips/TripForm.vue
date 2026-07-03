@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTagsStore } from '@/stores/tags'
 import { usePhotoUpload } from '@/composables/usePhotoUpload'
 import AppInput from '@/components/ui/AppInput.vue'
@@ -108,6 +108,7 @@ function validate() {
 }
 
 onMounted(async () => {
+  window.addEventListener('paste', handlePaste)
   await tagsStore.fetchTags()
   if (props.initialData) {
     name.value = props.initialData.name || ''
@@ -197,6 +198,30 @@ function handleSubmit() {
     tagIds: selectedTagIds.value
   })
 }
+
+async function handlePaste(event) {
+  if (photos.value.length >= 6) return
+  const items = Array.from(event.clipboardData?.items || [])
+  const imageItems = items.filter(item => item.type.startsWith('image/'))
+  if (!imageItems.length) return
+  event.preventDefault()
+  for (const item of imageItems.slice(0, 6 - photos.value.length)) {
+    const file = item.getAsFile()
+    if (!file) continue
+    const idx = photos.value.length
+    photos.value.push({ id: crypto.randomUUID(), url: null, previewUrl: URL.createObjectURL(file), uploading: true, error: null })
+    const photo = photos.value[idx]
+    try {
+      photo.url = await uploadFile(file)
+    } catch {
+      photo.error = 'Nahrávání selhalo'
+    } finally {
+      photo.uploading = false
+    }
+  }
+}
+
+onUnmounted(() => window.removeEventListener('paste', handlePaste))
 
 const hasParkingGps = computed(() => parkingLat.value && parkingLng.value)
 const mapTrips = computed(() => lat.value && lng.value ? [{ lat: lat.value, lng: lng.value, name: name.value || 'Výlet' }] : [])
@@ -365,23 +390,23 @@ const mapTrips = computed(() => lat.value && lng.value ? [{ lat: lat.value, lng:
       </div>
 
       <!-- Photo grid -->
-      <div class="grid grid-cols-3 gap-2 mb-3">
+      <div class="grid grid-cols-4 gap-1.5 mb-2">
         <div v-for="(photo, i) in photos" :key="photo.id"
-          class="relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+          class="relative aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
           <img v-if="photo.previewUrl" :src="photo.previewUrl" class="w-full h-full object-cover"
             @error="photo.previewUrl = null" />
           <div v-if="photo.uploading" class="absolute inset-0 flex items-center justify-center bg-black/40">
-            <div class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
-          <div v-else-if="photo.error" class="absolute inset-0 flex flex-col items-center justify-center bg-red-500/90 p-2">
-            <svg class="w-5 h-5 text-white mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div v-else-if="photo.error" class="absolute inset-0 flex flex-col items-center justify-center bg-red-500/90 p-1">
+            <svg class="w-4 h-4 text-white mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <p class="text-white text-xs text-center leading-tight">{{ photo.error }}</p>
           </div>
           <button v-if="!photo.uploading" type="button" @click="removePhoto(i)"
-            class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
+            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
@@ -389,14 +414,19 @@ const mapTrips = computed(() => lat.value && lng.value ? [{ lat: lat.value, lng:
 
         <!-- Add slot -->
         <label v-if="photos.length < 6"
-          class="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+          class="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
           <input type="file" accept="image/*" multiple class="hidden" @change="handleFileSelect" />
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span class="text-xs text-gray-400 mt-1">Přidat foto</span>
+          <span class="text-xs text-gray-400 mt-0.5">Přidat</span>
         </label>
       </div>
+
+      <!-- Clipboard hint -->
+      <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">
+        Tip: zkopírujte obrázek a stiskněte <kbd class="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono text-xs">Ctrl+V</kbd> pro vložení z clipboardu.
+      </p>
 
       <!-- URL input -->
       <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -422,5 +452,22 @@ const mapTrips = computed(() => lat.value && lng.value ? [{ lat: lat.value, lng:
       <AppButton type="button" variant="secondary" @click="$emit('cancel')" class="flex-1">Zrušit</AppButton>
       <AppButton type="submit" variant="primary" :loading="loading" class="flex-1">Uložit výlet</AppButton>
     </div>
+
+    <!-- Floating save button -->
+    <Teleport to="body">
+      <button
+        type="button"
+        @click="handleSubmit"
+        :disabled="loading || photos.some(p => p.uploading)"
+        class="fixed bottom-20 right-4 z-40 h-12 px-4 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-2xl shadow-lg flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95"
+        title="Uložit výlet"
+      >
+        <div v-if="loading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <span class="text-sm font-semibold">Uložit</span>
+      </button>
+    </Teleport>
   </form>
 </template>
