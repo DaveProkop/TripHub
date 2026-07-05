@@ -12,11 +12,17 @@ jobs:
       - name: Ping Supabase REST API
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --retry 3 --retry-delay 20 --retry-all-errors \
             "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/trips?select=id&limit=1" \
             -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}")
+            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}") || STATUS="connection_failed"
           echo "Supabase response: $STATUS"
-          if [ "$STATUS" != "200" ] && [ "$STATUS" != "406" ]; then
+          if [ "$STATUS" = "connection_failed" ]; then
+            echo "curl failed to connect after retries — Supabase may be waking up"
+            exit 1
+          fi
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "206" ] && [ "$STATUS" != "400" ] && [ "$STATUS" != "401" ] && [ "$STATUS" != "406" ]; then
             echo "Unexpected status $STATUS"
             exit 1
           fi
+          echo "OK — Supabase is alive"
