@@ -5,10 +5,18 @@ on:
     - cron: '0 8 */4 * *'  # every 4 days at 08:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Ping Supabase REST API
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -26,3 +34,21 @@ jobs:
             exit 1
           fi
           echo "OK — Supabase is alive"
+
+      - name: Keep repository active (prevents GitHub from auto-disabling this schedule)
+        if: always()
+        run: |
+          FILE=.github/.keepalive-heartbeat
+          LAST_COMMIT_DATE=$(git log -1 --format=%ct -- "$FILE" 2>/dev/null || echo 0)
+          NOW=$(date +%s)
+          DAYS_SINCE=$(( (NOW - LAST_COMMIT_DATE) / 86400 ))
+          if [ "$LAST_COMMIT_DATE" = "0" ] || [ "$DAYS_SINCE" -ge 25 ]; then
+            echo "Last updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$FILE"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "$FILE"
+            git commit -m "chore: keepalive heartbeat (prevents GitHub from disabling this schedule after 60 days of repo inactivity)"
+            git push
+          else
+            echo "Heartbeat committed $DAYS_SINCE day(s) ago — skipping"
+          fi
